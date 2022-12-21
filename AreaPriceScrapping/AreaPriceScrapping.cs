@@ -80,37 +80,12 @@ namespace AreaPrice.Scrapping
         /// <summary>
         /// Download excel file 
         /// </summary>
+        /// <returns></returns>
         private void DownloadExcelFile()
         {
             Log("Start Download Excel File");
 
-            var (cookie, controlId) = GetSessionData();
-            using (var webClient = new WebClient())
-            {
-                var uri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
-                webClient.Headers.Add("Cookie", cookie);
-
-                var fileName = $"{DateTime.Now.ToString("yyyy-MM-dd HH.mm")}.xlsx";
-                var filePath = Path.Combine(GetExportFolderPath(), fileName);
-
-                Log($"Download excel file. URI: {uri} , FilePath: {filePath}");
-                webClient.DownloadFile(uri, filePath);
-            }
-        }
-
-        /// <summary>
-        /// Get session data required to download excel file
-        /// </summary>
-        /// <returns></returns>
-        private (string cookie, string controlId) GetSessionData()
-        {
-            Log("Start get session data");
-
             var baseUri = "https://www.iexindia.com/marketdata/areaprice.aspx";
-
-            var cookie = string.Empty;
-            var controlId = string.Empty;
-
             var cookieContainer = new CookieContainer();
 
             using (var httpClientHandler = new HttpClientHandler
@@ -118,6 +93,8 @@ namespace AreaPrice.Scrapping
                 CookieContainer = cookieContainer
             })
             {
+                Log("Start get session data");
+
                 var uri = new Uri(baseUri);
                 using (var httpClient = new HttpClient(httpClientHandler))
                 {
@@ -134,18 +111,27 @@ namespace AreaPrice.Scrapping
                     var childElement = reportViewerElement.ChildNodes[5].ChildNodes[1];
 
                     // Parse control id by removing extra data 
-                    controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
+                    var controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
 
                     Log($"Get Control Id {controlId}");
 
                     // Retrive the cookie from the header
-                    cookie = cookieContainer.GetCookieHeader(uri).ToString();
+                    var cookie = cookieContainer.GetCookieHeader(uri).ToString();
 
                     Log($"Get Cookie {cookie}");
+
+                    var fileUri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
+                    httpClient.DefaultRequestHeaders.Add("Cookie", cookie);
+
+                    var fileName = $"{DateTime.Now:yyyy-MM-dd HH.mm}.xlsx";
+                    var filePath = Path.Combine(GetExportFolderPath(), fileName);
+
+                    Log($"Download excel file. URI: {uri} , FilePath: {filePath}");
+
+                    byte[] fileBytes = httpClient.GetByteArrayAsync(fileUri).Result;
+                    File.WriteAllBytes(filePath, fileBytes);
                 }
             }
-
-            return (cookie, controlId);
         }
 
         /// <summary>
@@ -192,7 +178,7 @@ namespace AreaPrice.Scrapping
         {
             try
             {
-                var logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
+                var logFile = Path.Combine(GetLogDirectory(), $"log_{DateTime.Now:yyyy-MM-dd}.txt");
 
                 if (File.Exists(logFile) == false)
                     File.Create(logFile).Close();
@@ -218,7 +204,7 @@ namespace AreaPrice.Scrapping
         {
             try
             {
-                var logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log-errors.txt");
+                var logFile = Path.Combine(GetLogDirectory(), $"log-errors_{DateTime.Now:yyyy-MM-dd}.txt");
 
                 if (File.Exists(logFile) == false)
                     File.Create(logFile).Close();
@@ -247,6 +233,21 @@ namespace AreaPrice.Scrapping
             w.WriteLine($"{DateTime.Now.ToLongTimeString()} {DateTime.Now.ToLongDateString()}");
             w.WriteLine($"  :{logMessage}");
             w.WriteLine("-------------------------------");
+        }
+
+        /// <summary>
+        /// Get or create log directory
+        /// </summary>
+        /// <returns></returns>
+        private static string GetLogDirectory()
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var logDir = Path.Combine(baseDir, "logs");
+            
+            if (Directory.Exists(logDir) == false)
+                Directory.CreateDirectory(logDir);
+
+            return logDir;
         }
     }
 }
