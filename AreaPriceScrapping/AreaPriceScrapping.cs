@@ -33,11 +33,12 @@ namespace AreaPrice.Scrapping
         /// <param name="args"></param>
         protected override void OnStart(string[] args)
         {
-            eventLog.WriteEntry("Started.");
+            Log("Service Started");
 
             try
             {
                 var intervalMinutes = GetIntervalMinutes();
+                Log($"Get Interval Minutes {intervalMinutes}");
 
                 var timer = new Timer(intervalMinutes * 60 * 1000);
                 timer.Elapsed += new ElapsedEventHandler(this.OnTimer);
@@ -54,7 +55,7 @@ namespace AreaPrice.Scrapping
         /// </summary>
         protected override void OnStop()
         {
-            eventLog.WriteEntry("Stopped");
+            Log("Service Stopped");
         }
 
         /// <summary>
@@ -64,7 +65,7 @@ namespace AreaPrice.Scrapping
         /// <param name="args"></param>
         private void OnTimer(object sender, ElapsedEventArgs args)
         {
-            eventLog.WriteEntry("Start Scrapping", EventLogEntryType.Information);
+            Log("Start Scrapping");
 
             try
             {
@@ -72,7 +73,7 @@ namespace AreaPrice.Scrapping
             }
             catch (Exception ex)
             {
-                eventLog.WriteEntry(ex.ToString(), EventLogEntryType.Error);
+                Log(ex);
             }
         }
 
@@ -81,6 +82,8 @@ namespace AreaPrice.Scrapping
         /// </summary>
         private void DownloadExcelFile()
         {
+            Log("Start Download Excel File");
+
             var (cookie, controlId) = GetSessionData();
             using (var webClient = new WebClient())
             {
@@ -89,7 +92,8 @@ namespace AreaPrice.Scrapping
 
                 var fileName = $"{DateTime.Now.ToString("yyyy-MM-dd HH.mm")}.xlsx";
                 var filePath = Path.Combine(GetExportFolderPath(), fileName);
-                
+
+                Log($"Download excel file. URI: {uri} , FilePath: {filePath}");
                 webClient.DownloadFile(uri, filePath);
             }
         }
@@ -100,6 +104,8 @@ namespace AreaPrice.Scrapping
         /// <returns></returns>
         private (string cookie, string controlId) GetSessionData()
         {
+            Log("Start get session data");
+
             var baseUri = "https://www.iexindia.com/marketdata/areaprice.aspx";
 
             var cookie = string.Empty;
@@ -118,6 +124,8 @@ namespace AreaPrice.Scrapping
                     var response = httpClient.GetAsync(uri).Result;
                     var htmlContent = response.Content.ReadAsStringAsync().Result;
 
+                    Log("Get HTMl content");
+
                     var htmlDocument = new HtmlDocument();
                     htmlDocument.LoadHtml(htmlContent);
 
@@ -128,8 +136,12 @@ namespace AreaPrice.Scrapping
                     // Parse control id by removing extra data 
                     controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
 
+                    Log($"Get Control Id {controlId}");
+
                     // Retrive the cookie from the header
                     cookie = cookieContainer.GetCookieHeader(uri).ToString();
+
+                    Log($"Get Cookie {cookie}");
                 }
             }
 
@@ -170,6 +182,71 @@ namespace AreaPrice.Scrapping
                 return string.Empty;
 
             return exportFolderPath;
+        }
+
+        /// <summary>
+        /// Log Message
+        /// </summary>
+        /// <param name="message"></param>
+        private void Log(string message)
+        {
+            try
+            {
+                var logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log.txt");
+
+                if (File.Exists(logFile) == false)
+                    File.Create(logFile).Close();
+
+                eventLog.WriteEntry(message, EventLogEntryType.Information);
+
+                using (StreamWriter w = File.AppendText(logFile))
+                {
+                    Log(message, w);
+                }
+            }
+            catch (Exception ex)
+            {
+                eventLog.WriteEntry(ex.ToString(), EventLogEntryType.Error);
+            }
+        }
+
+        /// <summary>
+        /// Log Message
+        /// </summary>
+        /// <param name="message"></param>
+        private void Log(Exception exception)
+        {
+            try
+            {
+                var logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log-errors.txt");
+
+                if (File.Exists(logFile) == false)
+                    File.Create(logFile).Close();
+
+                eventLog.WriteEntry(exception.ToString(), EventLogEntryType.Error);
+
+                using (StreamWriter w = File.AppendText(logFile))
+                {
+                    Log(exception.ToString(), w);
+                }
+            }
+            catch (Exception ex)
+            {
+                eventLog.WriteEntry(ex.ToString(), EventLogEntryType.Error);
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="logMessage"></param>
+        /// <param name="w"></param>
+        public static void Log(string logMessage, TextWriter w)
+        {
+            w.Write("\r\nLog Entry : ");
+            w.WriteLine($"{DateTime.Now.ToLongTimeString()} {DateTime.Now.ToLongDateString()}");
+            w.WriteLine($"  :{logMessage}");
+            w.WriteLine("-------------------------------");
         }
     }
 }
