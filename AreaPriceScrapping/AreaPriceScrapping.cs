@@ -35,7 +35,7 @@ namespace AreaPrice.Scrapping
         {
             try
             {
-                Log($"Service Started - {args.FirstOrDefault()}");
+                Log($"Service Started");
             }
             catch (Exception ex)
             {
