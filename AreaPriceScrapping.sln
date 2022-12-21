@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AreaPriceScrapping", "AreaPriceScrapping\AreaPriceScrapping.csproj", "{B7FFD04B-DD57-4319-A032-97B8512C6C5A}"
 EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "AreaPriceScrapping.Setup", "AreaPriceScrapping.Setup\AreaPriceScrapping.Setup.vdproj", "{0C1D35CC-8C4D-447A-8548-61DD1765ECF1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,8 @@ Global
 		{B7FFD04B-DD57-4319-A032-97B8512C6C5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7FFD04B-DD57-4319-A032-97B8512C6C5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7FFD04B-DD57-4319-A032-97B8512C6C5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C1D35CC-8C4D-447A-8548-61DD1765ECF1}.Debug|Any CPU.ActiveCfg = Debug
+		{0C1D35CC-8C4D-447A-8548-61DD1765ECF1}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
