@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
@@ -36,7 +37,7 @@ namespace AreaPrice.Scrapping
 
             try
             {
-                var intervalMinutes = GetIntervalMinutes(args);
+                var intervalMinutes = GetIntervalMinutes();
 
                 var timer = new Timer(intervalMinutes * 60 * 1000);
                 timer.Elapsed += new ElapsedEventHandler(this.OnTimer);
@@ -76,21 +77,21 @@ namespace AreaPrice.Scrapping
         }
 
         /// <summary>
-        /// Get the interval minutes from the configurations
+        /// Download excel file 
         /// </summary>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        private int GetIntervalMinutes(string[] args)
+        private void DownloadExcelFile()
         {
-            const int DefaultIntervalMinutes = 1; // Default Interval 60 Minutes
-           
-            if (args.Length == 0)
-                return DefaultIntervalMinutes;
+            var (cookie, controlId) = GetSessionData();
+            using (var webClient = new WebClient())
+            {
+                var uri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
+                webClient.Headers.Add("Cookie", cookie);
 
-            if (int.TryParse(args[0], out var intervalMinutes))
-                return intervalMinutes;
-
-            return DefaultIntervalMinutes;
+                var fileName = $"{DateTime.Now.ToString("yyyy-MM-dd HH.mm")}.xlsx";
+                var filePath = Path.Combine(GetExportFolderPath(), fileName);
+                
+                webClient.DownloadFile(uri, filePath);
+            }
         }
 
         /// <summary>
@@ -105,7 +106,7 @@ namespace AreaPrice.Scrapping
             var controlId = string.Empty;
 
             var cookieContainer = new CookieContainer();
-            
+
             using (var httpClientHandler = new HttpClientHandler
             {
                 CookieContainer = cookieContainer
@@ -135,15 +136,40 @@ namespace AreaPrice.Scrapping
             return (cookie, controlId);
         }
 
-        private void DownloadExcelFile()
+        /// <summary>
+        /// Get the interval minutes from the configurations
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private int GetIntervalMinutes()
         {
-            var (cookie, controlId) = GetSessionData();
-            using (var webClient = new WebClient())
-            {
-                var uri1 = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
-                webClient.Headers.Add("Cookie", cookie);
-                webClient.DownloadFile(uri1, string.Format("{0}.xlsx", Guid.NewGuid()));
-            }
+            const string IntervalMinutesKeyName = "IntervalMinutes";
+            const int DefaultIntervalMinutes = 1; // Default Interval 60 Minutes
+
+            var intervalMinutesValue = ConfigurationManager.AppSettings[IntervalMinutesKeyName];
+            if (intervalMinutesValue == null)
+                return DefaultIntervalMinutes;
+
+            if (int.TryParse(intervalMinutesValue, out var intervalMinutes))
+                return intervalMinutes;
+
+            return DefaultIntervalMinutes;
+        }
+
+        /// <summary>
+        /// Get the export folder path
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private string GetExportFolderPath()
+        {
+            const string FolderPathKeyName = "ExportFolderPath";
+
+            var exportFolderPath = ConfigurationManager.AppSettings[FolderPathKeyName];
+            if (exportFolderPath == null)
+                return string.Empty;
+
+            return exportFolderPath;
         }
     }
 }
