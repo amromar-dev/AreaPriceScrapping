@@ -2,7 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Configuration.Install;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -18,11 +20,12 @@ namespace AreaPrice.Scrapping
 
         protected override void OnBeforeInstall(IDictionary savedState)
         {
-            var exportFolder = Context.Parameters["ExportFolder"];
-            var intervalMinutes = Context.Parameters["IntervalMinutes"];
-
-            Context.Parameters["assemblypath"] += $"\" /{exportFolder} /{intervalMinutes}";
             base.OnBeforeInstall(savedState);
+        }
+
+        protected override void OnAfterInstall(IDictionary savedState)
+        {
+            base.OnAfterInstall(savedState);
         }
     }
 }
