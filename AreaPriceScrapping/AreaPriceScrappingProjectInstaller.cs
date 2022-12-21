@@ -9,11 +9,20 @@ using System.Threading.Tasks;
 namespace AreaPrice.Scrapping
 {
     [RunInstaller(true)]
-    public partial class AreaPriceScrappingProjectInstaller : System.Configuration.Install.Installer
+    public partial class AreaPriceScrappingProjectInstaller : Installer
     {
         public AreaPriceScrappingProjectInstaller()
         {
             InitializeComponent();
+        }
+
+        protected override void OnBeforeInstall(IDictionary savedState)
+        {
+            var exportFolder = Context.Parameters["ExportFolder"];
+            var intervalMinutes = Context.Parameters["IntervalMinutes"];
+
+            Context.Parameters["assemblypath"] += $"\" /{exportFolder} /{intervalMinutes}";
+            base.OnBeforeInstall(savedState);
         }
     }
 }

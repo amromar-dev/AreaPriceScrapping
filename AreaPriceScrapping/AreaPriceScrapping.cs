@@ -33,7 +33,7 @@ namespace AreaPrice.Scrapping
         /// <param name="args"></param>
         protected override void OnStart(string[] args)
         {
-            Log("Service Started");
+            Log($"Service Started - {args?.FirstOrDefault()}");
 
             try
             {
