@@ -39,9 +39,11 @@
             // 
             // AreaPriceScrappingServiceInstaller
             // 
+            this.AreaPriceScrappingServiceInstaller.DelayedAutoStart = true;
             this.AreaPriceScrappingServiceInstaller.Description = "Service to scrapping some of data from a web site which occurs hourly.";
             this.AreaPriceScrappingServiceInstaller.DisplayName = "Area Price Scrapping ";
             this.AreaPriceScrappingServiceInstaller.ServiceName = "AreaPriceScrapping";
+            this.AreaPriceScrappingServiceInstaller.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
             // 
             // AreaPriceScrappingProjectInstaller
             // 

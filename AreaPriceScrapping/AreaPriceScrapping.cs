@@ -172,10 +172,16 @@ namespace AreaPrice.Scrapping
             const string FolderPathKeyName = "ExportFolderPath";
 
             var exportFolderPath = ConfigurationManager.AppSettings[FolderPathKeyName];
-            if (exportFolderPath == null)
-                return string.Empty;
+            if (string.IsNullOrEmpty(exportFolderPath) == false)
+                return exportFolderPath;
 
-            return exportFolderPath;
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var exportDir = Path.Combine(baseDir, "Exports");
+
+            if (Directory.Exists(exportDir) == false)
+                Directory.CreateDirectory(exportDir);
+
+            return exportDir;
         }
 
         /// <summary>
