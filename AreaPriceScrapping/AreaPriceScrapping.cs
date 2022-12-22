@@ -138,6 +138,8 @@ namespace AreaPrice.Scrapping
 
                     Log($"Download excel file. URI: {uri} , FilePath: {filePath} , File Type {fileType}");
 
+                    ArchiveExportedFiles(fileType);
+
                     byte[] fileBytes = httpClient.GetByteArrayAsync(fileUri).Result;
                     File.WriteAllBytes(filePath, fileBytes);
                 }
@@ -204,10 +206,11 @@ namespace AreaPrice.Scrapping
             {
                 try
                 {
-                    if (new FileInfo(file).Extension != ".xlsx")
+                    var fileInfo = new FileInfo(file);
+                    if (fileInfo.Extension != ".xlsx")
                         continue;
 
-                    var archiveFilePath = Path.Combine(archiveFolderPath, file);
+                    var archiveFilePath = Path.Combine(archiveFolderPath, fileInfo.Name);
                     if (File.Exists(archiveFilePath) == false)
                         File.Copy(file, archiveFilePath);
 
@@ -234,7 +237,7 @@ namespace AreaPrice.Scrapping
                     return $"{DateTime.Now:yyyyMMdd_DAM_HH.mm}.xlsx";
 
                 case FileType.RTM:
-                    return $"{DateTime.Now:yyyyMMdd_RTM1hr_HH.mm}.xlsx";
+                    return $"{DateTime.Now:yyyyMMdd}_RTM1hr_{DateTime.Now:HH.mm}.xlsx";
 
                 default:
                     throw new NotImplementedException();
