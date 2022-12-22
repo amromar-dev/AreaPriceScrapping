@@ -77,7 +77,11 @@ namespace AreaPrice.Scrapping
 
             try
             {
-                DownloadExcelFile();
+                var uriDAM = "https://www.iexindia.com/marketdata/areaprice.aspx";
+                DownloadFile(uriDAM, FileType.DAM);
+
+                var uriRTM = "https://www.iexindia.com/marketdata/rtm_areaprice.aspx";
+                DownloadFile(uriRTM, FileType.RTM);
             }
             catch (Exception ex)
             {
@@ -89,11 +93,10 @@ namespace AreaPrice.Scrapping
         /// Download excel file 
         /// </summary>
         /// <returns></returns>
-        private void DownloadExcelFile()
+        private void DownloadFile(string baseUri, FileType fileType)
         {
-            Log("Start Download Excel File");
+            Log($"Start Download Excel File {fileType}");
 
-            var baseUri = "https://www.iexindia.com/marketdata/areaprice.aspx";
             var cookieContainer = new CookieContainer();
 
             using (var httpClientHandler = new HttpClientHandler
@@ -101,7 +104,7 @@ namespace AreaPrice.Scrapping
                 CookieContainer = cookieContainer
             })
             {
-                Log("Start get session data");
+                Log($"Start get session data {fileType}");
 
                 var uri = new Uri(baseUri);
                 using (var httpClient = new HttpClient(httpClientHandler))
@@ -109,7 +112,7 @@ namespace AreaPrice.Scrapping
                     var response = httpClient.GetAsync(uri).Result;
                     var htmlContent = response.Content.ReadAsStringAsync().Result;
 
-                    Log("Get HTMl content");
+                    Log($"Get HTMl content {fileType}");
 
                     var htmlDocument = new HtmlDocument();
                     htmlDocument.LoadHtml(htmlContent);
@@ -121,20 +124,19 @@ namespace AreaPrice.Scrapping
                     // Parse control id by removing extra data 
                     var controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
 
-                    Log($"Get Control Id {controlId}");
+                    Log($"Get Control Id {controlId} , File Type {fileType}");
 
                     // Retrive the cookie from the header
                     var cookie = cookieContainer.GetCookieHeader(uri).ToString();
 
-                    Log($"Get Cookie {cookie}");
+                    Log($"Get Cookie {cookie} , File Type {fileType}");
 
                     var fileUri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
                     httpClient.DefaultRequestHeaders.Add("Cookie", cookie);
 
-                    var fileName = $"{DateTime.Now:yyyy-MM-dd HH.mm}.xlsx";
-                    var filePath = Path.Combine(GetExportFolderPath(), fileName);
+                    var filePath = Path.Combine(GetExportFolderPath(fileType), GetFileName(fileType));
 
-                    Log($"Download excel file. URI: {uri} , FilePath: {filePath}");
+                    Log($"Download excel file. URI: {uri} , FilePath: {filePath} , File Type {fileType}");
 
                     byte[] fileBytes = httpClient.GetByteArrayAsync(fileUri).Result;
                     File.WriteAllBytes(filePath, fileBytes);
@@ -167,16 +169,16 @@ namespace AreaPrice.Scrapping
         /// </summary>
         /// <param name="args"></param>
         /// <returns></returns>
-        private string GetExportFolderPath()
+        private string GetExportFolderPath(FileType fileType)
         {
-            const string FolderPathKeyName = "ExportFolderPath";
+            string folderPathKeyName = $"ExportFolderPath-{fileType}";
 
-            var exportFolderPath = ConfigurationManager.AppSettings[FolderPathKeyName];
+            var exportFolderPath = ConfigurationManager.AppSettings[folderPathKeyName];
             if (string.IsNullOrEmpty(exportFolderPath) == false)
                 return exportFolderPath;
 
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var exportDir = Path.Combine(baseDir, "Exports");
+            var exportDir = Path.Combine(baseDir, "Exports", fileType.ToString());
 
             if (Directory.Exists(exportDir) == false)
                 Directory.CreateDirectory(exportDir);
@@ -184,6 +186,60 @@ namespace AreaPrice.Scrapping
             return exportDir;
         }
 
+        /// <summary>
+        /// Get the export folder path
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private void ArchiveExportedFiles(FileType fileType)
+        {
+            var folderPath = GetExportFolderPath(fileType);
+            var archiveFolderPath = Path.Combine(folderPath, "Archive");
+
+            if (Directory.Exists(archiveFolderPath) == false)
+                Directory.CreateDirectory(archiveFolderPath);
+
+            var files = Directory.GetFiles(folderPath);
+            foreach (var file in files)
+            {
+                try
+                {
+                    if (new FileInfo(file).Extension != ".xlsx")
+                        continue;
+
+                    var archiveFilePath = Path.Combine(archiveFolderPath, file);
+                    if (File.Exists(archiveFilePath) == false)
+                        File.Copy(file, archiveFilePath);
+
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    Log(ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the file name according to its type
+        /// </summary>
+        /// <param name="fileType"></param>
+        /// <returns></returns>
+        /// <exception cref="NotImplementedException"></exception>
+        private string GetFileName(FileType fileType)
+        {
+            switch(fileType) 
+            {
+                case FileType.DAM:
+                    return $"{DateTime.Now:yyyyMMdd_DAM_HH.mm}.xlsx";
+
+                case FileType.RTM:
+                    return $"{DateTime.Now:yyyyMMdd_RTM1hr_HH.mm}.xlsx";
+
+                default:
+                    throw new NotImplementedException();
+            }
+        }
         /// <summary>
         /// Log Message
         /// </summary>
@@ -262,6 +318,15 @@ namespace AreaPrice.Scrapping
                 Directory.CreateDirectory(logDir);
 
             return logDir;
+        }
+
+        /// <summary>
+        /// File Type
+        /// </summary>
+        private enum FileType
+        {
+            DAM,
+            RTM
         }
     }
 }
