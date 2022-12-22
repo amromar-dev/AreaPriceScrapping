@@ -19,6 +19,8 @@ namespace AreaPrice.Scrapping
 {
     public partial class AreaPriceScrapping : ServiceBase
     {
+        private bool WorkingOnProgress = false;
+
         /// <summary>
         /// Default constructor
         /// </summary>
@@ -77,6 +79,11 @@ namespace AreaPrice.Scrapping
 
             try
             {
+                if (WorkingOnProgress)
+                    return;
+
+                WorkingOnProgress = true;
+
                 var uriDAM = "https://www.iexindia.com/marketdata/areaprice.aspx";
                 DownloadFile(uriDAM, FileType.DAM);
 
@@ -87,6 +94,10 @@ namespace AreaPrice.Scrapping
             {
                 Log(ex);
             }
+            finally
+            {
+                WorkingOnProgress = false;
+            }
         }
 
         /// <summary>
@@ -95,54 +106,61 @@ namespace AreaPrice.Scrapping
         /// <returns></returns>
         private void DownloadFile(string baseUri, FileType fileType)
         {
-            Log($"Start Download Excel File {fileType}");
-
-            var cookieContainer = new CookieContainer();
-
-            using (var httpClientHandler = new HttpClientHandler
+            try
             {
-                CookieContainer = cookieContainer
-            })
-            {
-                Log($"Start get session data {fileType}");
+                Log($"Start Download Excel File {fileType}");
 
-                var uri = new Uri(baseUri);
-                using (var httpClient = new HttpClient(httpClientHandler))
+                var cookieContainer = new CookieContainer();
+
+                using (var httpClientHandler = new HttpClientHandler
                 {
-                    var response = httpClient.GetAsync(uri).Result;
-                    var htmlContent = response.Content.ReadAsStringAsync().Result;
+                    CookieContainer = cookieContainer
+                })
+                {
+                    Log($"Start get session data {fileType}");
 
-                    Log($"Get HTMl content {fileType}");
+                    var uri = new Uri(baseUri);
+                    using (var httpClient = new HttpClient(httpClientHandler))
+                    {
+                        var response = httpClient.GetAsync(uri).Result;
+                        var htmlContent = response.Content.ReadAsStringAsync().Result;
 
-                    var htmlDocument = new HtmlDocument();
-                    htmlDocument.LoadHtml(htmlContent);
+                        Log($"Get HTMl content {fileType}");
 
-                    // Extract the control id from HTML content
-                    var reportViewerElement = htmlDocument.GetElementbyId("ctl00_InnerContent_reportViewer_ctl09_ReportControl");
-                    var childElement = reportViewerElement.ChildNodes[5].ChildNodes[1];
+                        var htmlDocument = new HtmlDocument();
+                        htmlDocument.LoadHtml(htmlContent);
 
-                    // Parse control id by removing extra data 
-                    var controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
+                        // Extract the control id from HTML content
+                        var reportViewerElement = htmlDocument.GetElementbyId("ctl00_InnerContent_reportViewer_ctl09_ReportControl");
+                        var childElement = reportViewerElement.ChildNodes[5].ChildNodes[1];
 
-                    Log($"Get Control Id {controlId} , File Type {fileType}");
+                        // Parse control id by removing extra data 
+                        var controlId = childElement.Id.Replace("_1_oReportDiv", "").Remove(0, 1);
 
-                    // Retrive the cookie from the header
-                    var cookie = cookieContainer.GetCookieHeader(uri).ToString();
+                        Log($"Get Control Id {controlId} , File Type {fileType}");
 
-                    Log($"Get Cookie {cookie} , File Type {fileType}");
+                        // Retrive the cookie from the header
+                        var cookie = cookieContainer.GetCookieHeader(uri).ToString();
 
-                    var fileUri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
-                    httpClient.DefaultRequestHeaders.Add("Cookie", cookie);
+                        Log($"Get Cookie {cookie} , File Type {fileType}");
 
-                    var filePath = Path.Combine(GetExportFolderPath(fileType), GetFileName(fileType));
+                        var fileUri = $"https://www.iexindia.com/Reserved.ReportViewerWebControl.axd?Culture=1033&CultureOverrides=True&UICulture=1033&UICultureOverrides=True&ReportStack=1&ControlID={controlId}&Mode=true&OpType=Export&FileName=PriceMinute&ContentDisposition=OnlyHtmlInline&Format=EXCELOPENXML";
+                        httpClient.DefaultRequestHeaders.Add("Cookie", cookie);
 
-                    Log($"Download excel file. URI: {uri} , FilePath: {filePath} , File Type {fileType}");
+                        var filePath = Path.Combine(GetExportFolderPath(fileType), GetFileName(fileType));
 
-                    ArchiveExportedFiles(fileType);
+                        Log($"Download excel file. URI: {uri} , FilePath: {filePath} , File Type {fileType}");
 
-                    byte[] fileBytes = httpClient.GetByteArrayAsync(fileUri).Result;
-                    File.WriteAllBytes(filePath, fileBytes);
+                        ArchiveExportedFiles(fileType);
+
+                        byte[] fileBytes = httpClient.GetByteArrayAsync(fileUri).Result;
+                        File.WriteAllBytes(filePath, fileBytes);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Log(ex);
             }
         }
 
