@@ -7,6 +7,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Media;
 using System.Net;
 using System.Net.Http;
 using System.Security.Policy;
@@ -160,6 +161,7 @@ namespace AreaPrice.Scrapping
             }
             catch (Exception ex)
             {
+                NotifyInternetConnectionError();
                 Log(ex);
             }
         }
@@ -261,6 +263,7 @@ namespace AreaPrice.Scrapping
                     throw new NotImplementedException();
             }
         }
+      
         /// <summary>
         /// Log Message
         /// </summary>
@@ -348,6 +351,16 @@ namespace AreaPrice.Scrapping
         {
             DAM,
             RTM
+        }
+
+        /// <summary>
+        /// Play sound in case no internet connection
+        /// </summary>
+        private void NotifyInternetConnectionError()
+        {
+            var soundFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "wav.wav");
+            var player = new SoundPlayer(soundFile);
+            player.Play();
         }
     }
 }
